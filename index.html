@@ -1,1 +1,825 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>GitHub Knowledge Mindmap</title>
+  <style>
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      font-family: Arial, Helvetica, sans-serif;
+      background: #0b1020;
+      color: #e5e7eb;
+    }
+    body { display: grid; grid-template-columns: 390px 1fr; }
+    .sidebar {
+      height: 100vh;
+      overflow-y: auto;
+      border-right: 1px solid rgba(255,255,255,0.08);
+      background: rgba(10, 15, 30, 0.98);
+      padding: 20px;
+    }
+    .title { margin: 0 0 8px; font-size: 26px; font-weight: 800; }
+    .sub { margin: 0 0 14px; color: #94a3b8; line-height: 1.6; font-size: 14px; }
+    .config-box, .panel {
+      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(255,255,255,0.04);
+      border-radius: 18px;
+      padding: 16px;
+      box-shadow: 0 12px 30px rgba(0,0,0,0.18);
+    }
+    .config-box { margin-bottom: 14px; }
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      margin-top: 10px;
+    }
+    .form-grid .full { grid-column: 1 / -1; }
+    label { display: block; font-size: 12px; color: #cbd5e1; margin-bottom: 4px; }
+    input {
+      width: 100%;
+      border: 1px solid rgba(255,255,255,0.1);
+      background: rgba(255,255,255,0.04);
+      color: #fff;
+      border-radius: 12px;
+      padding: 11px 12px;
+      outline: none;
+    }
+    .search { margin: 12px 0; }
+    .controls {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 8px;
+      margin-top: 10px;
+    }
+    button {
+      border: 0;
+      border-radius: 12px;
+      padding: 10px 12px;
+      background: #1e293b;
+      color: #e2e8f0;
+      cursor: pointer;
+      font-weight: 700;
+    }
+    button:hover { background: #334155; }
+    .primary { background: #2563eb; }
+    .primary:hover { background: #1d4ed8; }
+    .status {
+      margin-top: 10px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      font-size: 13px;
+      line-height: 1.5;
+      background: rgba(255,255,255,0.05);
+      color: #cbd5e1;
+      white-space: pre-wrap;
+    }
+    .node-name { font-size: 24px; font-weight: 800; margin-bottom: 10px; }
+    .meta { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+    .meta span {
+      font-size: 12px;
+      padding: 6px 9px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.08);
+      color: #cbd5e1;
+    }
+    .desc { color: #dbe4f0; line-height: 1.7; white-space: pre-wrap; margin-bottom: 16px; }
+    .breadcrumb { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 12px; color: #7dd3fc; font-size: 13px; }
+    .links { display: grid; gap: 10px; }
+    .link-item {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 14px;
+      border-radius: 12px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(255,255,255,0.08);
+      color: #e5e7eb;
+      text-decoration: none;
+      align-items: center;
+    }
+    .link-item:hover { background: rgba(255,255,255,0.08); }
+    .empty { color: #94a3b8; line-height: 1.7; }
+    .legend { margin-top: 14px; font-size: 13px; color: #94a3b8; line-height: 1.6; }
+
+    .main {
+      position: relative;
+      width: 100%;
+      height: 100vh;
+      overflow: hidden;
+      background:
+        radial-gradient(circle at 20% 20%, rgba(59,130,246,0.15), transparent 28%),
+        radial-gradient(circle at 80% 30%, rgba(16,185,129,0.12), transparent 26%),
+        radial-gradient(circle at 65% 75%, rgba(168,85,247,0.14), transparent 28%),
+        linear-gradient(180deg, #0b1020 0%, #0f172a 100%);
+    }
+    .toolbar {
+      position: absolute;
+      top: 16px;
+      left: 16px;
+      z-index: 20;
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      max-width: calc(100% - 32px);
+    }
+    .chip {
+      border: 1px solid rgba(255,255,255,0.08);
+      background: rgba(15, 23, 42, 0.78);
+      color: #cbd5e1;
+      padding: 9px 12px;
+      border-radius: 999px;
+      font-size: 13px;
+      backdrop-filter: blur(8px);
+    }
+    .viewport {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+      cursor: grab;
+    }
+    .viewport.dragging { cursor: grabbing; }
+    svg { width: 100%; height: 100%; display: block; }
+    .link { stroke: rgba(148, 163, 184, 0.4); stroke-width: 2; fill: none; }
+    .link.active { stroke: rgba(125, 211, 252, 0.9); stroke-width: 3; }
+    .node-card { filter: drop-shadow(0 10px 20px rgba(0,0,0,0.24)); cursor: pointer; }
+    .node-rect {
+      fill: rgba(15, 23, 42, 0.9);
+      stroke: rgba(148, 163, 184, 0.28);
+      stroke-width: 1.4;
+      rx: 18;
+      ry: 18;
+    }
+    .node-rect.root {
+      fill: rgba(30, 41, 59, 0.96);
+      stroke: rgba(125, 211, 252, 0.85);
+      stroke-width: 2;
+    }
+    .node-rect.active {
+      fill: rgba(30, 41, 59, 0.98);
+      stroke: rgba(59, 130, 246, 1);
+      stroke-width: 2.6;
+    }
+    .node-label { fill: #f8fafc; font-size: 18px; font-weight: 800; pointer-events: none; }
+    .node-sub { fill: #94a3b8; font-size: 12px; pointer-events: none; }
+    .node-count { fill: #7dd3fc; font-size: 12px; font-weight: 700; pointer-events: none; }
+    .hint {
+      position: absolute;
+      right: 16px;
+      bottom: 16px;
+      z-index: 20;
+      padding: 10px 12px;
+      border-radius: 14px;
+      background: rgba(15, 23, 42, 0.78);
+      border: 1px solid rgba(255,255,255,0.08);
+      color: #cbd5e1;
+      font-size: 13px;
+      line-height: 1.6;
+      backdrop-filter: blur(8px);
+    }
+    @media (max-width: 1150px) {
+      body { grid-template-columns: 1fr; }
+      .sidebar {
+        position: absolute;
+        z-index: 30;
+        top: 0;
+        left: 0;
+        width: min(410px, 92vw);
+        box-shadow: 18px 0 40px rgba(0,0,0,0.35);
+      }
+    }
+  </style>
+</head>
+<body>
+  <aside class="sidebar">
+    <h1 class="title">GitHub 지식 마인드맵</h1>
+    <p class="sub">GitHub 레포지토리의 실제 폴더 구조를 읽어서 바로 마인드맵으로 보여줍니다. 즉, GitHub에서 폴더를 바꾸면 화면도 그 구조를 반영합니다.</p>
+
+    <div class="config-box">
+      <strong>레포지토리 연결</strong>
+      <div class="form-grid">
+        <div>
+          <label for="ownerInput">Owner</label>
+          <input id="ownerInput" placeholder="github 사용자명" />
+        </div>
+        <div>
+          <label for="repoInput">Repository</label>
+          <input id="repoInput" placeholder="레포 이름" />
+        </div>
+        <div class="full">
+          <label for="branchInput">Branch</label>
+          <input id="branchInput" placeholder="main" value="main" />
+        </div>
+      </div>
+      <div class="controls">
+        <button id="loadBtn" class="primary">GitHub 구조 불러오기</button>
+        <button id="homeBtn">현재 페이지 기준 자동설정</button>
+      </div>
+      <div id="statusBox" class="status">아직 GitHub 구조를 불러오지 않았습니다.</div>
+    </div>
+
+    <input id="searchInput" class="search" type="text" placeholder="노드 검색" />
+
+    <div class="controls">
+      <button id="fitBtn">전체 보기</button>
+      <button id="centerBtn">루트 중앙</button>
+      <button id="expandBtn">전체 펼치기</button>
+      <button id="collapseBtn">1단계만</button>
+    </div>
+
+    <div class="panel">
+      <div id="breadcrumb" class="breadcrumb"></div>
+      <div id="nodeName" class="node-name">로딩 전</div>
+      <div id="meta" class="meta"></div>
+      <div id="desc" class="desc">레포지토리를 연결하면 폴더 구조가 마인드맵으로 표시됩니다.</div>
+      <div id="links" class="links"></div>
+      <div class="legend">
+        폴더 하나 = 지식 덩어리 하나<br/>
+        하위 폴더 = 하위 개념<br/>
+        README.md = 정리 자료 링크<br/>
+        GitHub 구조를 다시 읽을 때마다 자동 반영
+      </div>
+    </div>
+  </aside>
+
+  <main class="main">
+    <div class="toolbar">
+      <div class="chip">드래그: 화면 이동</div>
+      <div class="chip">휠: 확대 / 축소</div>
+      <div class="chip">노드 클릭: 상세 보기</div>
+      <div class="chip">GitHub API 기반 자동 구조 반영</div>
+    </div>
+
+    <div id="viewport" class="viewport">
+      <svg id="mindmapSvg" viewBox="0 0 1600 1000" preserveAspectRatio="xMidYMid meet">
+        <g id="camera">
+          <g id="linksLayer"></g>
+          <g id="nodesLayer"></g>
+        </g>
+      </svg>
+    </div>
+
+    <div class="hint">GitHub Pages에 index.html로 배포 가능<br/>owner / repo / branch 지정 후 자동 시각화</div>
+  </main>
+
+  <script>
+    const svg = document.getElementById('mindmapSvg');
+    const camera = document.getElementById('camera');
+    const linksLayer = document.getElementById('linksLayer');
+    const nodesLayer = document.getElementById('nodesLayer');
+    const viewport = document.getElementById('viewport');
+    const searchInput = document.getElementById('searchInput');
+    const nodeNameEl = document.getElementById('nodeName');
+    const metaEl = document.getElementById('meta');
+    const descEl = document.getElementById('desc');
+    const linksEl = document.getElementById('links');
+    const breadcrumbEl = document.getElementById('breadcrumb');
+    const ownerInput = document.getElementById('ownerInput');
+    const repoInput = document.getElementById('repoInput');
+    const branchInput = document.getElementById('branchInput');
+    const statusBox = document.getElementById('statusBox');
+
+    const CARD_W = 230;
+    const CARD_H = 88;
+    const H_GAP = 280;
+    const V_GAP = 130;
+    const IGNORE_NAMES = new Set(['.git', '.github', 'node_modules']);
+
+    let repoConfig = { owner: '', repo: '', branch: 'main' };
+    let mindmap = null;
+    let activePath = '';
+    let expanded = new Set();
+    let flatNodes = [];
+    let flatLinks = [];
+    let transform = { x: 360, y: 120, scale: 1 };
+    let dragState = null;
+    let searchKeyword = '';
+
+    function setStatus(message) {
+      statusBox.textContent = message;
+    }
+
+    function slugPath(pathArr) {
+      return pathArr.join('/');
+    }
+
+    function hasChildren(node) {
+      return Array.isArray(node.children) && node.children.length > 0;
+    }
+
+    function truncate(text, len) {
+      if (!text) return '';
+      return text.length > len ? text.slice(0, len - 1) + '…' : text;
+    }
+
+    function guessRepoFromLocation() {
+      const host = location.hostname;
+      const pathParts = location.pathname.split('/').filter(Boolean);
+      let owner = '';
+      let repo = '';
+
+      if (host.endsWith('.github.io')) {
+        owner = host.split('.')[0];
+        repo = pathParts[0] || owner + '.github.io';
+      }
+
+      return { owner, repo, branch: 'main' };
+    }
+
+    function folderGitHubUrl(path = '') {
+      const base = `https://github.com/${repoConfig.owner}/${repoConfig.repo}/tree/${repoConfig.branch}`;
+      return path ? `${base}/${encodePath(path)}` : base;
+    }
+
+    function fileGitHubUrl(path) {
+      return `https://github.com/${repoConfig.owner}/${repoConfig.repo}/blob/${repoConfig.branch}/${encodePath(path)}`;
+    }
+
+    function encodePath(path) {
+      return path.split('/').map(encodeURIComponent).join('/');
+    }
+
+    function makeFolderNode(name, fullPath, depth) {
+      return {
+        name,
+        type: 'folder',
+        path: fullPath,
+        depth,
+        description: fullPath ? `${fullPath} 폴더` : `${repoConfig.repo} 레포지토리 루트`,
+        children: [],
+        files: [],
+        links: []
+      };
+    }
+
+    function buildMindmapFromGitHubTree(items) {
+      const root = makeFolderNode(repoConfig.repo, '', 0);
+      const folderMap = new Map();
+      folderMap.set('', root);
+
+      const sortedItems = [...items].sort((a, b) => a.path.localeCompare(b.path, 'ko'));
+
+      for (const item of sortedItems) {
+        const parts = item.path.split('/');
+        if (parts.some(part => IGNORE_NAMES.has(part))) continue;
+
+        if (item.type === 'tree') {
+          let currentPath = '';
+          let parentPath = '';
+          for (let i = 0; i < parts.length; i++) {
+            const part = parts[i];
+            currentPath = currentPath ? `${currentPath}/${part}` : part;
+            if (!folderMap.has(currentPath)) {
+              const node = makeFolderNode(part, currentPath, i + 1);
+              folderMap.set(currentPath, node);
+              const parent = folderMap.get(parentPath);
+              if (parent && !parent.children.includes(node)) parent.children.push(node);
+            }
+            parentPath = currentPath;
+          }
+        }
+      }
+
+      for (const item of sortedItems) {
+        const parts = item.path.split('/');
+        if (parts.some(part => IGNORE_NAMES.has(part))) continue;
+        if (item.type !== 'blob') continue;
+
+        const fileName = parts[parts.length - 1];
+        const folderPath = parts.slice(0, -1).join('/');
+        const folderNode = folderMap.get(folderPath || '');
+        if (!folderNode) continue;
+
+        const fileRecord = {
+          name: fileName,
+          path: item.path,
+          url: fileGitHubUrl(item.path),
+          isReadme: /^readme\./i.test(fileName)
+        };
+        folderNode.files.push(fileRecord);
+      }
+
+      for (const [folderPath, node] of folderMap.entries()) {
+        node.children.sort((a, b) => a.name.localeCompare(b.name, 'ko'));
+        node.files.sort((a, b) => {
+          if (a.isReadme && !b.isReadme) return -1;
+          if (!a.isReadme && b.isReadme) return 1;
+          return a.name.localeCompare(b.name, 'ko');
+        });
+
+        const readme = node.files.find(file => file.isReadme);
+        const topFiles = node.files.slice(0, 6);
+
+        node.description = [
+          folderPath ? `${folderPath} 폴더` : `${repoConfig.repo} 레포지토리 루트`,
+          `하위 폴더 ${node.children.length}개`,
+          `파일 ${node.files.length}개`
+        ].join(' · ');
+
+        node.links = [
+          { label: 'GitHub 폴더 열기', url: folderGitHubUrl(folderPath) }
+        ];
+
+        if (readme) {
+          node.links.push({ label: readme.name, url: readme.url });
+        }
+
+        topFiles.filter(file => !file.isReadme).forEach(file => {
+          node.links.push({ label: file.name, url: file.url });
+        });
+      }
+
+      return root;
+    }
+
+    function expandAll(node, path = []) {
+      const currentPath = slugPath([...path, node.name]);
+      expanded.add(currentPath);
+      (node.children || []).forEach(child => expandAll(child, [...path, node.name]));
+    }
+
+    function keepDepthOne(node, path = [], depth = 0) {
+      const currentPath = slugPath([...path, node.name]);
+      if (depth <= 1) expanded.add(currentPath);
+      (node.children || []).forEach(child => keepDepthOne(child, [...path, node.name], depth + 1));
+    }
+
+    function subtreeMatches(node, keyword) {
+      const fileNames = (node.files || []).map(file => file.name).join(' ');
+      const text = `${node.name} ${node.description || ''} ${fileNames}`.toLowerCase();
+      if (text.includes(keyword)) return true;
+      return (node.children || []).some(child => subtreeMatches(child, keyword));
+    }
+
+    function getVisibleChildren(node, currentPath) {
+      if (!hasChildren(node)) return [];
+      if (searchKeyword) return node.children.filter(child => subtreeMatches(child, searchKeyword));
+      return expanded.has(currentPath) ? node.children : [];
+    }
+
+    function buildLayout(root) {
+      flatNodes = [];
+      flatLinks = [];
+
+      function countLeaves(node, path = []) {
+        const currentPath = slugPath([...path, node.name]);
+        const children = getVisibleChildren(node, currentPath);
+        if (children.length === 0) {
+          node._leafCount = 1;
+          return 1;
+        }
+        let sum = 0;
+        children.forEach(child => {
+          sum += countLeaves(child, [...path, node.name]);
+        });
+        node._leafCount = sum;
+        return sum;
+      }
+
+      countLeaves(root);
+
+      function assign(node, path = [], depth = 0, topLeafIndex = 0) {
+        const currentPathArr = [...path, node.name];
+        const currentPath = slugPath(currentPathArr);
+        const children = getVisibleChildren(node, currentPath);
+        const centerLeaf = topLeafIndex + node._leafCount / 2 - 0.5;
+        const x = depth * H_GAP;
+        const y = centerLeaf * V_GAP;
+
+        const record = {
+          node,
+          path: currentPath,
+          pathArr: currentPathArr,
+          x,
+          y,
+          depth,
+          childCount: (node.children || []).length,
+          fileCount: (node.files || []).length,
+          isRoot: depth === 0,
+          isActive: activePath === currentPath
+        };
+        flatNodes.push(record);
+
+        let offset = topLeafIndex;
+        children.forEach(child => {
+          const childRecord = assign(child, currentPathArr, depth + 1, offset);
+          flatLinks.push({ from: record, to: childRecord });
+          offset += child._leafCount;
+        });
+
+        return record;
+      }
+
+      assign(root);
+    }
+
+    function roundedLink(x1, y1, x2, y2) {
+      const startX = x1 + CARD_W / 2;
+      const endX = x2 - CARD_W / 2;
+      const c1 = startX + (endX - startX) * 0.42;
+      const c2 = startX + (endX - startX) * 0.58;
+      return `M ${startX} ${y1} C ${c1} ${y1}, ${c2} ${y2}, ${endX} ${y2}`;
+    }
+
+    function renderMindmap() {
+      if (!mindmap) return;
+      buildLayout(mindmap);
+      linksLayer.innerHTML = '';
+      nodesLayer.innerHTML = '';
+
+      flatLinks.forEach(link => {
+        const path = document.createElementNS('http://www.w3.org/2000/svg', 'path');
+        path.setAttribute('class', 'link' + ((link.from.isActive || link.to.isActive) ? ' active' : ''));
+        path.setAttribute('d', roundedLink(link.from.x, link.from.y, link.to.x, link.to.y));
+        linksLayer.appendChild(path);
+      });
+
+      flatNodes.forEach(item => {
+        const g = document.createElementNS('http://www.w3.org/2000/svg', 'g');
+        g.setAttribute('class', 'node-card');
+        g.setAttribute('transform', `translate(${item.x - CARD_W / 2}, ${item.y - CARD_H / 2})`);
+
+        const rect = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+        let rectClass = 'node-rect';
+        if (item.isRoot) rectClass += ' root';
+        if (item.isActive) rectClass += ' active';
+        rect.setAttribute('class', rectClass);
+        rect.setAttribute('width', CARD_W);
+        rect.setAttribute('height', CARD_H);
+
+        const label = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        label.setAttribute('class', 'node-label');
+        label.setAttribute('x', 18);
+        label.setAttribute('y', 30);
+        label.textContent = truncate(item.node.name, 18);
+
+        const sub = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        sub.setAttribute('class', 'node-sub');
+        sub.setAttribute('x', 18);
+        sub.setAttribute('y', 52);
+        sub.textContent = truncate(item.node.path || `${repoConfig.repo} root`, 30);
+
+        const count = document.createElementNS('http://www.w3.org/2000/svg', 'text');
+        count.setAttribute('class', 'node-count');
+        count.setAttribute('x', 18);
+        count.setAttribute('y', 72);
+        count.textContent = `폴더 ${item.childCount}개 · 파일 ${item.fileCount}개`;
+
+        g.append(rect, label, sub, count);
+        g.addEventListener('click', (e) => {
+          e.stopPropagation();
+          activePath = item.path;
+          if (hasChildren(item.node)) {
+            if (expanded.has(item.path)) expanded.delete(item.path);
+            else expanded.add(item.path);
+          }
+          showDetail(item.node, item.pathArr);
+          renderMindmap();
+        });
+        nodesLayer.appendChild(g);
+      });
+
+      applyTransform();
+    }
+
+    function showDetail(node, pathArr) {
+      nodeNameEl.textContent = node.name;
+      breadcrumbEl.innerHTML = '';
+      pathArr.forEach((seg, idx) => {
+        const span = document.createElement('span');
+        span.textContent = idx === pathArr.length - 1 ? seg : seg + ' >';
+        breadcrumbEl.appendChild(span);
+      });
+
+      metaEl.innerHTML = '';
+      [
+        `유형: ${node.type}`,
+        `하위 폴더: ${(node.children || []).length}개`,
+        `파일: ${(node.files || []).length}개`,
+        `링크: ${(node.links || []).length}개`
+      ].forEach(text => {
+        const span = document.createElement('span');
+        span.textContent = text;
+        metaEl.appendChild(span);
+      });
+
+      descEl.textContent = node.description || '설명이 없습니다.';
+      linksEl.innerHTML = '';
+
+      const children = node.children || [];
+      const links = node.links || [];
+      const files = node.files || [];
+
+      if (links.length === 0 && children.length === 0 && files.length === 0) {
+        const empty = document.createElement('div');
+        empty.className = 'empty';
+        empty.textContent = '이 폴더에 연결할 자료가 없습니다.';
+        linksEl.appendChild(empty);
+        return;
+      }
+
+      links.forEach(link => {
+        const a = document.createElement('a');
+        a.className = 'link-item';
+        a.href = link.url;
+        a.target = '_blank';
+        a.rel = 'noreferrer';
+        a.innerHTML = `<span>${link.label}</span><span>열기 ↗</span>`;
+        linksEl.appendChild(a);
+      });
+
+      children.forEach(child => {
+        const div = document.createElement('div');
+        div.className = 'link-item';
+        div.innerHTML = `<span>하위 폴더: ${child.name}</span><span>이동</span>`;
+        div.style.cursor = 'pointer';
+        div.addEventListener('click', () => {
+          const childPathArr = [...pathArr, child.name];
+          activePath = slugPath(childPathArr);
+          expanded.add(slugPath(pathArr));
+          showDetail(child, childPathArr);
+          renderMindmap();
+        });
+        linksEl.appendChild(div);
+      });
+    }
+
+    function applyTransform() {
+      camera.setAttribute('transform', `translate(${transform.x} ${transform.y}) scale(${transform.scale})`);
+    }
+
+    function fitToScreen() {
+      if (!mindmap) return;
+      buildLayout(mindmap);
+      if (flatNodes.length === 0) return;
+      const minX = Math.min(...flatNodes.map(n => n.x - CARD_W / 2));
+      const maxX = Math.max(...flatNodes.map(n => n.x + CARD_W / 2));
+      const minY = Math.min(...flatNodes.map(n => n.y - CARD_H / 2));
+      const maxY = Math.max(...flatNodes.map(n => n.y + CARD_H / 2));
+
+      const width = viewport.clientWidth;
+      const height = viewport.clientHeight;
+      const graphW = maxX - minX + 140;
+      const graphH = maxY - minY + 140;
+      const scale = Math.min(width / graphW, height / graphH, 1.1);
+
+      transform.scale = Math.max(scale, 0.28);
+      transform.x = width / 2 - ((minX + maxX) / 2) * transform.scale;
+      transform.y = height / 2 - ((minY + maxY) / 2) * transform.scale;
+      applyTransform();
+    }
+
+    function centerRoot() {
+      const width = viewport.clientWidth;
+      const height = viewport.clientHeight;
+      transform.scale = Math.max(transform.scale, 1);
+      transform.x = width / 2;
+      transform.y = height / 2;
+      applyTransform();
+    }
+
+    async function fetchRepoTree(owner, repo, branch) {
+      const apiUrl = `https://api.github.com/repos/${encodeURIComponent(owner)}/${encodeURIComponent(repo)}/git/trees/${encodeURIComponent(branch)}?recursive=1`;
+      const response = await fetch(apiUrl, {
+        headers: { 'Accept': 'application/vnd.github+json' }
+      });
+
+      if (!response.ok) {
+        const text = await response.text();
+        throw new Error(`GitHub API 요청 실패 (${response.status})\n${text}`);
+      }
+
+      const data = await response.json();
+      if (!Array.isArray(data.tree)) {
+        throw new Error('GitHub 응답에서 tree 데이터를 찾지 못했습니다.');
+      }
+      return data.tree;
+    }
+
+    async function loadRepository() {
+      const owner = ownerInput.value.trim();
+      const repo = repoInput.value.trim();
+      const branch = branchInput.value.trim() || 'main';
+
+      if (!owner || !repo) {
+        setStatus('owner와 repository를 먼저 입력해야 합니다.');
+        return;
+      }
+
+      repoConfig = { owner, repo, branch };
+      setStatus(`불러오는 중...\n${owner}/${repo} (${branch})`);
+
+      try {
+        const treeItems = await fetchRepoTree(owner, repo, branch);
+        mindmap = buildMindmapFromGitHubTree(treeItems);
+        activePath = mindmap.name;
+        expanded = new Set();
+        keepDepthOne(mindmap);
+        showDetail(mindmap, [mindmap.name]);
+        renderMindmap();
+        fitToScreen();
+        setStatus(`불러오기 완료\n${owner}/${repo} (${branch})\n총 항목 ${treeItems.length}개`);
+      } catch (error) {
+        console.error(error);
+        setStatus(`불러오기 실패\n${error.message}`);
+      }
+    }
+
+    viewport.addEventListener('mousedown', (e) => {
+      dragState = { startX: e.clientX, startY: e.clientY, baseX: transform.x, baseY: transform.y };
+      viewport.classList.add('dragging');
+    });
+
+    window.addEventListener('mousemove', (e) => {
+      if (!dragState) return;
+      transform.x = dragState.baseX + (e.clientX - dragState.startX);
+      transform.y = dragState.baseY + (e.clientY - dragState.startY);
+      applyTransform();
+    });
+
+    window.addEventListener('mouseup', () => {
+      dragState = null;
+      viewport.classList.remove('dragging');
+    });
+
+    viewport.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      const rect = viewport.getBoundingClientRect();
+      const px = e.clientX - rect.left;
+      const py = e.clientY - rect.top;
+      const wx = (px - transform.x) / transform.scale;
+      const wy = (py - transform.y) / transform.scale;
+      const factor = e.deltaY < 0 ? 1.08 : 0.92;
+      const nextScale = Math.min(2.4, Math.max(0.25, transform.scale * factor));
+      transform.x = px - wx * nextScale;
+      transform.y = py - wy * nextScale;
+      transform.scale = nextScale;
+      applyTransform();
+    }, { passive: false });
+
+    searchInput.addEventListener('input', (e) => {
+      searchKeyword = e.target.value.trim().toLowerCase();
+      if (!mindmap) return;
+      if (searchKeyword) expandAll(mindmap);
+      renderMindmap();
+      fitToScreen();
+    });
+
+    document.getElementById('fitBtn').addEventListener('click', () => {
+      renderMindmap();
+      fitToScreen();
+    });
+
+    document.getElementById('centerBtn').addEventListener('click', () => {
+      centerRoot();
+    });
+
+    document.getElementById('expandBtn').addEventListener('click', () => {
+      if (!mindmap) return;
+      expandAll(mindmap);
+      renderMindmap();
+      fitToScreen();
+    });
+
+    document.getElementById('collapseBtn').addEventListener('click', () => {
+      if (!mindmap) return;
+      expanded = new Set();
+      keepDepthOne(mindmap);
+      renderMindmap();
+      fitToScreen();
+    });
+
+    document.getElementById('loadBtn').addEventListener('click', loadRepository);
+
+    document.getElementById('homeBtn').addEventListener('click', () => {
+      const guessed = guessRepoFromLocation();
+      ownerInput.value = guessed.owner;
+      repoInput.value = guessed.repo;
+      branchInput.value = guessed.branch;
+      setStatus(`현재 페이지 기준으로 추정했습니다.\n${guessed.owner || '(owner 미확인)'}/${guessed.repo || '(repo 미확인)'} (${guessed.branch})`);
+    });
+
+    window.addEventListener('resize', () => {
+      fitToScreen();
+    });
+
+    (function init() {
+      const guessed = guessRepoFromLocation();
+      ownerInput.value = guessed.owner;
+      repoInput.value = guessed.repo;
+      branchInput.value = guessed.branch;
+      if (guessed.owner && guessed.repo) {
+        setStatus(`현재 주소를 기준으로 레포를 추정했습니다.\n${guessed.owner}/${guessed.repo} (${guessed.branch})\n바로 불러오기를 눌러도 됩니다.`);
+      } else {
+        setStatus('owner / repo / branch를 입력한 뒤 GitHub 구조 불러오기를 누르세요.');
+      }
+    })();
+  </script>
+</body>
+</html>
 
